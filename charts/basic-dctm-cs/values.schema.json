@@ -1,0 +1,81 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["namespace","domain","stackName","tcpGateway","database"],
+    "properties": {
+        "namespace": {
+            "type": "string",
+            "description": "The kubernetes namespace to deploy to",
+        },
+        "domain": {
+            "type": "string",
+            "description": "The name of the external domain to use when creating HTTPRoutes and TCPRoute annotations",
+        },
+        "stackName": {
+            "type": "string",
+            "description": "Name of the stack (i.e. Dev, Stage, Prod...)"
+        },
+        "httpGateway": {
+            "kind": "object",
+            "description": "Properties of the gateway to connet webapp HTTPRoutes to",
+            "properties": {
+                "name": {
+                    "kind": "string",
+                    "description": "Name of the gateway resource"
+                },
+                "namespace": {
+                    "kind": "string",
+                    "description": "Namespace the gateway resource resides in (Defaults to $.namespace)"
+                }
+            },
+            "required": ["name"]
+        },
+        "tcpGateway": {
+            "kind": "object",
+            "description": "Properties of the gateway to connet webapp TCPRoutes to",
+            "properties": {
+                "name": {
+                    "kind": "string",
+                    "description": "Name of the gateway resource"
+                },
+                "namespace": {
+                    "kind": "string",
+                    "description": "Namespace the gateway resource resides in (Defaults to $.namespace)"
+                }
+            },
+            "required": ["name"]
+        },
+        "database": {
+            "type": "object",
+            "properties": {
+                "image": {
+                    "type": "string",
+                    "description": "The name of the postgresql image to use (Must be supported by Documentum",
+                },
+                "hostName": {
+                    "type": "string",
+                    "description": "Name of database",
+                },
+                "portNumber": {
+                    "type": "integer",
+                    "description": "DB Listening Port",
+                },
+                "databaseName": {
+                    "type": "string",
+                    "description": "Name of the database to create",
+                    "default": "sandbox"
+                },
+                "databaseUser": {
+                    "type": "string",
+                    "description": "DBA for the database",
+                    "default": "sandbox"
+                },
+                "databaseUserPassword": {
+                    "type": "string",
+                    "description": "Password for .databaseUser",
+                    "default": "changeme"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${stackname}-server-secrets
+  namespace: ${namespace}
+type: Opaque
+data:
+  DM_DOCBASE_OWNER_PASSWORD: ${dm_docbase_owner_password_encoded}
+  DM_DATABASE_ADMIN_PASSWORD: ${dm_database_admin_password_encoded}
+  DM_DATABASE_OWNER_PASSWORD: ${dm_database_owner_password_encoded}
+  DM_GR_REGISTRY_PASSWORD: ${dm_gr_registry_password_encoded}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${stackname}-server-configmap
+  namespace: ${namespace}
+data:
+  DM_DOCBROKER_PORT: ${dm_docbroker_port}
+  DM_DOCBASE_PORT: ${dm_docbase_port}
+  DM_DOCBASE_NAME: ${dm_docbase_name}
+  DM_DOCBASE_OWNER: ${dm_docbase_owner}
+  DM_DOCBASE_ID: ${dm_docbase_id}
+  DM_DOCBASE_DESC: ${dm_docbase_desc}
+  DM_SMTP_SERVER_NAME: ${dm_smtp_server_name}
+  DM_SMTP_EMAIL_ACCOUNT: ${dm_smtp_server_account}
+  DM_DATABASE_HOST: ${stackname}-database
+  DM_DATABASE_PORT: ${database_port}
+  DM_DATABASE_ADMIN_NAME: ${dm_database_admin_name}
+  DM_DATABASE_NAME: ${database_user}
+  DM_DATABASE_OWNER: ${database_user}
+  DM_APPSERVER_PORT: ${dm_appserver_port}
+  DM_SERVER_HOST: ${stackname}-serv4r
+  DM_GR_REGISTRY_USER: dm_bof_registry
+  DM_GR_REGISTRY_REPO: ${dm_docbase_name}
+  DM_TS_PORT: ${dm_ts_port}
+  DM_TS_ADMIN_PORT: ${dm_ts_admin_port}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-server-data-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-server-secure-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Ki
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-server-config-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Ki
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-server-apptoken-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Ki

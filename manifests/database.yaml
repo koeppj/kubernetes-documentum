@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${stackname}-database-secret
+  namespace: ${namespace}
+type: Opaque
+data:
+  POSTGRES_USER: ${database_user_encoded}
+  POSTGRES_PASSWORD: ${database_user_password_encoded}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-database-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  ${stackname}-database-deployment
+  namespace: ${namespace}
+  labels:
+    app:  ${stackname}-database
+spec:
+  selector:
+    matchLabels:
+      app: ${stackname}-database
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app:  ${stackname}-database
+    spec:
+      hostname: ${stackname}-database
+      containers:
+      - name:  ${stackname}-database
+        image:  ${database_image}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+        readinessProbe:
+          initialDelaySeconds: 30
+          exec:
+            command:
+              - psql
+              - -h
+              - localhost
+              - -U
+              - ${database_user}
+              - -c
+              - SELECT 1
+        envFrom:
+        - secretRef:
+            name: ${stackname}-database-secret
+        ports:
+        - containerPort:  ${database_port}
+          name:  database-port
+        volumeMounts:
+        - name: database-data
+          mountPath: /var/lib/postgresql
+      volumes:
+        - name: database-data
+          persistentVolumeClaim:
+            claimName: ${stackname}-database-pvc
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-database-service
+  namespace: ${namespace}
+spec:
+  selector:
+    app: ${stackname}-database
+  type: ClusterIP
+  ports:
+  - name: postgres
+    protocol: TCP
+    port: ${database_port}
+    targetPort: postgres

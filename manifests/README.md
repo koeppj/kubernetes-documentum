@@ -1,0 +1,3 @@
+# K8S Manifests
+
+Manifests by Stack Component (Database, Content Server, etc.).  Each file contains all the resource types needed ([PVCs](https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/), [Deploments](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/), [Services](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/) etc) for a given component.

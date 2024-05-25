@@ -1,0 +1,16 @@
+namespace: documentum
+domain: k8s.koeppster.lan
+stackName: demo
+httpGateway:
+  name: koeppster-lan-gateway
+  namespace: infrastructure
+tcpGateway:
+  name: koeppster-lan-gateway
+  namespace: infrastructure
+database:
+  image: postgres:12-alpine
+  hostName: postgres
+  portNumber: 1532
+  databaseName: sandbox
+  databaseUser: sandbox
+  databaseUserPassword: changeme
