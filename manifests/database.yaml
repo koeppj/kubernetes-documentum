@@ -49,8 +49,8 @@ spec:
         image:  ${database_image}
         resources:
           limits:
-            cpu: 100m
-            memory: 100Mi
+            cpu: 1000m
+            memory: 500Mi
         readinessProbe:
           initialDelaySeconds: 30
           exec:
@@ -80,7 +80,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ${stackname}-database-service
+  name: ${stackname}-database
   namespace: ${namespace}
 spec:
   selector:
@@ -90,4 +90,4 @@ spec:
   - name: postgres
     protocol: TCP
     port: ${database_port}
-    targetPort: postgres
+    targetPort: database-port

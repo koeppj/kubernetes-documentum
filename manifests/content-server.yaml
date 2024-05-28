@@ -16,25 +16,25 @@ metadata:
   name: ${stackname}-server-configmap
   namespace: ${namespace}
 data:
-  DM_DOCBROKER_PORT: ${dm_docbroker_port}
-  DM_DOCBASE_PORT: ${dm_docbase_port}
-  DM_DOCBASE_NAME: ${dm_docbase_name}
-  DM_DOCBASE_OWNER: ${dm_docbase_owner}
-  DM_DOCBASE_ID: ${dm_docbase_id}
-  DM_DOCBASE_DESC: ${dm_docbase_desc}
-  DM_SMTP_SERVER_NAME: ${dm_smtp_server_name}
-  DM_SMTP_EMAIL_ACCOUNT: ${dm_smtp_server_account}
-  DM_DATABASE_HOST: ${stackname}-database
-  DM_DATABASE_PORT: ${database_port}
-  DM_DATABASE_ADMIN_NAME: ${dm_database_admin_name}
-  DM_DATABASE_NAME: ${database_user}
-  DM_DATABASE_OWNER: ${database_user}
-  DM_APPSERVER_PORT: ${dm_appserver_port}
-  DM_SERVER_HOST: ${stackname}-serv4r
-  DM_GR_REGISTRY_USER: dm_bof_registry
-  DM_GR_REGISTRY_REPO: ${dm_docbase_name}
-  DM_TS_PORT: ${dm_ts_port}
-  DM_TS_ADMIN_PORT: ${dm_ts_admin_port}
+  DM_DOCBROKER_PORT: "${dm_docbroker_port}"
+  DM_DOCBASE_PORT: "${dm_docbase_port}"
+  DM_DOCBASE_NAME: "${dm_docbase_name}"
+  DM_DOCBASE_OWNER: "${dm_docbase_owner}"
+  DM_DOCBASE_ID: "${dm_docbase_id}"
+  DM_DOCBASE_DESC: "${dm_docbase_desc}"
+  DM_SMTP_SERVER_NAME: "${dm_smtp_server_name}"
+  DM_SMTP_EMAIL_ACCOUNT: "${dm_smtp_server_account}"
+  DM_DATABASE_HOST: "${stackname}-database"
+  DM_DATABASE_PORT: "${database_port}"
+  DM_DATABASE_ADMIN_NAME: "${dm_database_admin_name}"
+  DM_DATABASE_NAME: "${database_user}"
+  DM_DATABASE_OWNER: "${database_user}"
+  DM_APPSERVER_PORT: "${dm_appserver_port}"
+  DM_SERVER_HOST: "${stackname}-server"
+  DM_GR_REGISTRY_USER: dm_bof_registry"
+  DM_GR_REGISTRY_REPO: "${dm_docbase_name}"
+  DM_TS_PORT: "${dm_ts_port}"
+  DM_TS_ADMIN_PORT: "${dm_ts_admin_port}"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -52,7 +52,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ${stackname}-server-secure-pvc
+  name: ${stackname}-server-dba-pvc
   namespace: ${namespace}
 spec:
   storageClassName: ${storage_class}
@@ -78,7 +78,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ${stackname}-server-apptoken-pvc
+  name: ${stackname}-server-dfcdata-pvc
   namespace: ${namespace}
 spec:
   storageClassName: ${storage_class}
@@ -87,3 +87,133 @@ spec:
   resources:
     requests:
       storage: 50Ki
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${stackname}-server-presets-pvc
+  namespace: ${namespace}
+spec:
+  storageClassName: ${storage_class}
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Ki
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  ${stackname}-server
+  namespace: ${namespace}
+  labels:
+    app:  ${stackname}-server
+spec:
+  selector:
+    matchLabels:
+      app: ${stackname}-server
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app:  ${stackname}-server
+    spec:
+      hostname: ${stackname}-server
+      # initContainers:
+        # Init containers are exactly like regular containers, except:
+          # - Init containers always run to completion.
+          # - Each init container must complete successfully before the next one starts.
+      containers:
+      - name:  ${stackname}-server
+        image:  ${dm_server_image}
+        resources:
+          limits:
+            cpu: 1500m
+            memory: 2Gi
+        readinessProbe:
+          exec:
+            command:
+            - su
+            - "-"
+            - dmadmin
+            - -c 
+            - bin/dm_health_check.sh
+          initialDelaySeconds: 1800
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 300
+        envFrom:
+        - secretRef:
+            name: ${stackname}-server-secrets
+        - configMapRef:
+            name: ${stackname}-server-configmap
+        ports:
+        - name: appserver
+          containerPort: ${dm_appserver_port}
+        - name: docbroker
+          containerPort: ${dm_docbroker_port}
+        - name: docbase
+          containerPort: ${dm_docbase_port}
+        - name: docbaseplusone
+          containerPort: ${dm_docbase_port_plusone}
+        - name: ts-port
+          containerPort: ${dm_ts_port}
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/documentum
+        - name: dba
+          mountPath: /opt/documentum/dba
+        - name: config
+          mountPath: /opt/documentum/config
+        - name: dfcdata
+          mountPath: /opt/documentum/dfcdata
+        - name: presets
+          mountPath: /opt/documentum/presets
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ${stackname}-server-data-pvc
+        - name: dba
+          persistentVolumeClaim:
+            claimName: ${stackname}-server-dba-pvc
+        - name: config
+          persistentVolumeClaim:
+            claimName: ${stackname}-server-config-pvc
+        - name: dfcdata
+          persistentVolumeClaim:
+            claimName: ${stackname}-server-dfcdata-pvc
+        - name: presets
+          persistentVolumeClaim:
+            claimName: ${stackname}-server-presets-pvc
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-server
+  namespace: ${namespace}
+spec:
+  selector:
+    app: ${stackname}-server
+  ports:
+  - port: ${dm_docbroker_port}
+    name: docbroker
+    targetPort: docbroker
+  - port: ${dm_appserver_port}
+    name: appserver
+    targetPort: appserver
+  - port: ${dm_docbase_port}
+    name: docbase
+    targetPort: docbase
+  - port: ${dm_docbase_port_plusone}
+    name: docbaseplusone
+    targetPort: docbaseplusone
+  - port: ${dm_ts_port}
+    name: ts-port
+    targetPort: ts-port

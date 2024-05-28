@@ -14,3 +14,4 @@ export database_user_encoded=$(echo ${database_user} | tr -d '[:space:]' | base6
 export database_user_password_encoded=$(echo ${database_user_password} | tr -d '[:space:]' | base64)
 
 envsubst < ${manifests_dir}/database.yaml | microk8s kubectl delete -f -
+envsubst < ${manifests_dir}/content-server.yaml | microk8s kubectl delete -f -
