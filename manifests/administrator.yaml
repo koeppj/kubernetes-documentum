@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${stackname}-da-secrets
+  namespace: ${namespace}
+type: Opaque
+data:
+  DM_PREFERENCES_PASSWORD: ${dm_preferences_password_encoded}
+  DM_PRESETS_PASSWORD: ${dm_presets_password_encoded}
+  DM_GR_REGISTRY_PASSWORD: ${dm_gr_registry_password_encoded}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${stackname}-da-configmap
+  namespace: ${namespace}
+data:
+  DM_DOCBROKER_PORT: "${dm_docbroker_port}"
+  DM_DOCBROKER_HOST: "${stackname}-docbroker-int"
+  DM_GR_REGISTRY_REPO: "${dm_gr_registry_repo}"
+  DM_PREFERENCES_REPO: "${dm_docbase_name}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  ${stackname}-da
+  namespace: ${namespace}
+  labels:
+    app:  ${stackname}-da
+spec:
+  selector:
+    matchLabels:
+      app: ${stackname}-da
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app:  ${stackname}-da
+    spec:
+      # initContainers:
+        # Init containers are exactly like regular containers, except:
+          # - Init containers always run to completion.
+          # - Each init container must complete successfully before the next one starts.
+      hostname: ${stackname}-da
+      containers:
+      - name:  ${stackname}-da
+        image:  ${dm_da_image}
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1000Mi
+        envFrom:
+        - secretRef:
+            name: ${stackname}-da-secrets
+        - configMapRef:
+            name: ${stackname}-da-configmap
+        ports:
+        - containerPort:  8080
+          name:  http
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-da
+  namespace: ${namespace}
+spec:
+  selector:
+    app: ${stackname}-da
+  ports:
+  - port: 8080
+    name: docbroker
+    targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ${stackname}-da-route
+  namespace: ${namespace}
+spec:
+  parentRefs:
+    - name: koeppster-lan-gateway
+      namespace: infrastructure
+  hostnames: ["${stackname}-da.k8s.koeppster.lan"]
+  rules:
+    - backendRefs:
+      - name: ${stackname}-da
+        namespace: ${namespace}
+        port: 8080

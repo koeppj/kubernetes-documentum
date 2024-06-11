@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: ${stackname}-extbroker-tcproute
+  namespace: ${namespace}
+spec:
+  parentRefs:
+    - name: documentum-lan-gateway
+      namespace: ${namespace}
+      sectionName: docbroker
+    - name: documentum-lan-gateway
+      namespace: ${namespace}
+      sectionName: docbrokerplusone
+    - name: documentum-lan-gateway
+      namespace: ${namespace}
+      sectionName: docbase
+    - name: documentum-lan-gateway
+      namespace: documentum
+      sectionName: docbaseplusone
+  rules:
+    - backendRefs:
+      - name: ${stackname}-server
+        namespace: ${namespace}
+        port: ${dm_docbase_port}
+      - name: ${stackname}-server
+        namespace: ${namespace}
+        port: ${dm_docbase_port_plusone}

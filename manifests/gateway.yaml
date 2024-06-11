@@ -1,0 +1,45 @@
+#
+# This gateway watched by k8s_gateway so localnet IPs available via local network
+# DNS
+#
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: documentum-lan-gateway
+  namespace: documentum
+  annotations:
+    coredns.io/hostname: "demo-server.k8s.koeppster.lan"
+spec:
+  gatewayClassName: istio
+  listeners:
+    - name: appserver
+      port: 9080
+      hostname: "demo-server.k8s.koeppster.lan"
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: docbroker
+      port: 1689
+      protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: docbrokerplusone
+      port: 1690
+      protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: docbase
+      port: 50100
+      protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: docbaseplusone
+      port: 50101
+      protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: Same

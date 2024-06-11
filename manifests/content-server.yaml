@@ -9,6 +9,8 @@ data:
   DM_DATABASE_ADMIN_PASSWORD: ${dm_database_admin_password_encoded}
   DM_DATABASE_OWNER_PASSWORD: ${dm_database_owner_password_encoded}
   DM_GR_REGISTRY_PASSWORD: ${dm_gr_registry_password_encoded}
+  DM_PRESETS_PASSWORD: ${dm_presets_password_encoded}
+  DM_PREFERENCES_PASSWORD: ${dm_preferences_password_encoded}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -17,6 +19,13 @@ metadata:
   namespace: ${namespace}
 data:
   DM_DOCBROKER_PORT: "${dm_docbroker_port}"
+  DM_DOCBROKER_NAME: "intdocbrker"
+  DM_DOCBROKER_HOST: "${stackname}-docbroker-int"
+  DM_DOCBROKER_EXT_PORT: "${dm_docbroker_ext_port}"
+  DM_DOCBROKER_EXT_NAME: "extdocbroker"
+  DM_DOCBROKER_EXT_HOST: "${stackname}-docbroker-ext"
+  DM_DOCBROKER_EXT_CONFIG: "yes"
+  DM_DOCBROKER_EXT_IP: "${dm_docbroker_ext_ip}"
   DM_DOCBASE_PORT: "${dm_docbase_port}"
   DM_DOCBASE_NAME: "${dm_docbase_name}"
   DM_DOCBASE_OWNER: "${dm_docbase_owner}"
@@ -104,7 +113,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  ${stackname}-server
+  name:  ${stackname}-server-deployment
   namespace: ${namespace}
   labels:
     app:  ${stackname}-server
@@ -123,7 +132,8 @@ spec:
       labels:
         app:  ${stackname}-server
     spec:
-      hostname: ${stackname}-server
+      nodeSelector:
+        fastnode: "yes"
       # initContainers:
         # Init containers are exactly like regular containers, except:
           # - Init containers always run to completion.
@@ -131,23 +141,7 @@ spec:
       containers:
       - name:  ${stackname}-server
         image:  ${dm_server_image}
-        resources:
-          limits:
-            cpu: 1500m
-            memory: 2Gi
-        readinessProbe:
-          exec:
-            command:
-            - su
-            - "-"
-            - dmadmin
-            - -c 
-            - bin/dm_health_check.sh
-          initialDelaySeconds: 1800
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
-          periodSeconds: 300
+        imagePullPolicy: Always
         envFrom:
         - secretRef:
             name: ${stackname}-server-secrets
@@ -155,15 +149,21 @@ spec:
             name: ${stackname}-server-configmap
         ports:
         - name: appserver
-          containerPort: ${dm_appserver_port}
+          containerPort: 9080
         - name: docbroker
-          containerPort: ${dm_docbroker_port}
+          containerPort: 1489
+        - name: docbrokerplus
+          containerPort: 1490
+        - name: docbrokerext
+          containerPort: 1689
+        - name: docbrokerextp
+          containerPort: 1690
         - name: docbase
-          containerPort: ${dm_docbase_port}
+          containerPort: 50100
         - name: docbaseplusone
-          containerPort: ${dm_docbase_port_plusone}
+          containerPort: 50101
         - name: ts-port
-          containerPort: ${dm_ts_port}
+          containerPort: 8081
         volumeMounts:
         - name: data
           mountPath: /var/lib/documentum
@@ -202,18 +202,87 @@ spec:
   selector:
     app: ${stackname}-server
   ports:
-  - port: ${dm_docbroker_port}
-    name: docbroker
-    targetPort: docbroker
-  - port: ${dm_appserver_port}
+  - port: 9080
     name: appserver
     targetPort: appserver
-  - port: ${dm_docbase_port}
+  - port: 50100
+    protocol: TCP
     name: docbase
-    targetPort: docbase
-  - port: ${dm_docbase_port_plusone}
-    name: docbaseplusone
-    targetPort: docbaseplusone
-  - port: ${dm_ts_port}
+    targetPort: 50100
+  - port: 50101
+    name: docbaseone
+    protocol: TCP
+    targetPort: 50101
+  - port: 8081
     name: ts-port
     targetPort: ts-port
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-docbroker-int
+  namespace: ${namespace}
+spec:
+  selector:
+    app: ${stackname}-server
+  ports:
+  - port: 1489
+    name: docbroker
+    protocol: TCP
+    targetPort: 1489
+  - port: 1490
+    name: docbrokerone
+    protocol: TCP
+    targetPort: 1490
+---
+#apiVersion: gateway.networking.k8s.io/v1alpha2
+#kind: TCPRoute
+#metadata:
+#  name: ${stackname}-sandbox
+#  namespace: ${namespace}
+#spec:
+#  parentRefs:
+#    - name: documentum-lan-gateway
+#      namespace: ${namespace}
+#      sectionName: docbroker
+#    - name: documentum-lan-gateway
+#      namespace: ${namespace}
+#      sectionName: docbrokerplus
+#    - name: documentum-lan-gateway
+#      namespace: ${namespace}
+#      sectionName: docbase
+#    - name: documentum-lan-gateway
+#      namespace: ${namespace}
+#      sectionName: docbaseplusone
+#  rules:
+#    - backendRefs:
+#      - name: ${stackname}-server
+#        namespace: ${namespace}
+#        port: 1489
+#      - name: ${stackname}-server
+#        namespace: ${namespace}
+#        port: 1490
+#      - name: ${stackname}-server
+#        namespace: ${namespace}
+#        port: 50100
+#      - name: ${stackname}-server
+#        namespace: ${namespace}
+#        port: 50101
+#---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ${stackname}-app-route
+  namespace: ${namespace}
+spec:
+  parentRefs:
+    - name: documentum-lan-gateway
+      namespace: ${namespace}
+      sectionName: appserver
+  rules:
+    - backendRefs:
+      - name: ${stackname}-server
+        namespace: ${namespace}
+        port: 9080
+

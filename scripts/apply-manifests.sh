@@ -16,6 +16,11 @@ export dm_docbase_owner_password_encoded=$(echo ${dm_docbase_owner_password} | t
 export dm_database_admin_password_encoded=$(echo ${dm_database_admin_password} | tr -d '[:space:]' | base64)
 export dm_database_owner_password_encoded=$(echo ${dm_database_owner_password} | tr -d '[:space:]' | base64)
 export dm_gr_registry_password_encoded=$(echo ${dm_gr_registry_password} | tr -d '[:space:]' | base64)
+export dm_preferences_password_encoded=$(echo ${dm_preferences_password} | tr -d '[:space:]' | base64)
+export dm_presets_password_encoded=$(echo ${dm_presets_password} | tr -d '[:space:]' | base64)
 
 envsubst < ${manifests_dir}/database.yaml | microk8s kubectl apply -f -
 envsubst < ${manifests_dir}/content-server.yaml | microk8s kubectl apply -f -
+envsubst < ${manifests_dir}/administrator.yaml | microk8s kubectl apply -f -
+envsubst < ${manifests_dir}/tcproute.yaml | microk8s kubectl apply -f -
+envsubst < ${manifests_dir}/extbroker-service.yaml | microk8s kubectl apply -f -
