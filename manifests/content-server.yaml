@@ -24,8 +24,8 @@ data:
   DM_DOCBROKER_EXT_PORT: "${dm_docbroker_ext_port}"
   DM_DOCBROKER_EXT_NAME: "extdocbroker"
   DM_DOCBROKER_EXT_HOST: "${stackname}-docbroker-ext"
-  DM_DOCBROKER_EXT_CONFIG: "yes"
   DM_DOCBROKER_EXT_IP: "${dm_docbroker_ext_ip}"
+  DM_DOCBROKER_EXT_CONFIG: "yes"
   DM_DOCBASE_PORT: "${dm_docbase_port}"
   DM_DOCBASE_NAME: "${dm_docbase_name}"
   DM_DOCBASE_OWNER: "${dm_docbase_owner}"
@@ -134,19 +134,43 @@ spec:
     spec:
       nodeSelector:
         fastnode: "yes"
-      # initContainers:
-        # Init containers are exactly like regular containers, except:
-          # - Init containers always run to completion.
-          # - Each init container must complete successfully before the next one starts.
       containers:
       - name:  ${stackname}-server
         image:  ${dm_server_image}
-        imagePullPolicy: Always
         envFrom:
         - secretRef:
             name: ${stackname}-server-secrets
         - configMapRef:
             name: ${stackname}-server-configmap
+        livenessProbe: 
+          exec:
+            command:
+            - 'su'
+            - '-c'
+            - '/home/dmadmin/bin/dm_health_check.sh'
+            - '-'
+            - 'dmadmin'
+          periodSeconds: 30
+          failureThreshold: 3
+          timeoutSeconds: 5
+#        readinessProbe: 
+#          exec:
+#            command:
+#            - 'su'
+#            - '-c'
+#            - '/home/dmadmin/bin/dm_health_check.sh'
+#            - '-'
+#            - 'dmadmin'
+#          periodSeconds: 120
+#          failureThreshold: 30
+#          timeoutSeconds: 5
+        startupProbe:
+          exec:
+            command:
+            - 'stat'
+            - '/opt/documentum/dba/running'
+          periodSeconds: 60
+          failureThreshold: 60
         ports:
         - name: appserver
           containerPort: 9080
@@ -217,7 +241,6 @@ spec:
     name: ts-port
     targetPort: ts-port
 ---
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -226,6 +249,7 @@ metadata:
 spec:
   selector:
     app: ${stackname}-server
+  publishNotReadyAddresses: true
   ports:
   - port: 1489
     name: docbroker
@@ -236,40 +260,6 @@ spec:
     protocol: TCP
     targetPort: 1490
 ---
-#apiVersion: gateway.networking.k8s.io/v1alpha2
-#kind: TCPRoute
-#metadata:
-#  name: ${stackname}-sandbox
-#  namespace: ${namespace}
-#spec:
-#  parentRefs:
-#    - name: documentum-lan-gateway
-#      namespace: ${namespace}
-#      sectionName: docbroker
-#    - name: documentum-lan-gateway
-#      namespace: ${namespace}
-#      sectionName: docbrokerplus
-#    - name: documentum-lan-gateway
-#      namespace: ${namespace}
-#      sectionName: docbase
-#    - name: documentum-lan-gateway
-#      namespace: ${namespace}
-#      sectionName: docbaseplusone
-#  rules:
-#    - backendRefs:
-#      - name: ${stackname}-server
-#        namespace: ${namespace}
-#        port: 1489
-#      - name: ${stackname}-server
-#        namespace: ${namespace}
-#        port: 1490
-#      - name: ${stackname}-server
-#        namespace: ${namespace}
-#        port: 50100
-#      - name: ${stackname}-server
-#        namespace: ${namespace}
-#        port: 50101
-#---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

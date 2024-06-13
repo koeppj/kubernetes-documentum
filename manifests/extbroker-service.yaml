@@ -7,6 +7,7 @@ spec:
   type: NodePort
   selector:
     app: ${stackname}-server
+  publishNotReadyAddresses: true
   ports:
   - nodePort: 30189
     port: ${dm_docbroker_ext_port}

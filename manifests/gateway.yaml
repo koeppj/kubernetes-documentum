@@ -43,3 +43,7 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
+  addresses:
+  - type: IPAddress
+    value: ${dm_docbroker_ext_ip}
+

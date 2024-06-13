@@ -1,3 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${stackname}-resource-role
+  namespace: ${namespace}
+rules:
+- apiGroups: [""]
+  resources: ["pods","deployments","services"]
+  verbs: ["list","get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${stackname}-resource-sa
+  namespace: ${namespace}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${stackname}-resource-binding
+  namespace: ${namespace}
+roleRef:
+  apiGroup: ""
+  kind: Role
+  name: ${stackname}-resource-role
+subjects:
+  - kind: ServiceAccount
+    name: ${stackname}-resource-sa
+    namespace: ${namespace}
+---
 apiVersion: v1
 kind: Secret
 metadata:
@@ -23,7 +53,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  ${stackname}-da
+  name:  ${stackname}-da-deployment
   namespace: ${namespace}
   labels:
     app:  ${stackname}-da
@@ -46,7 +76,28 @@ spec:
         # Init containers are exactly like regular containers, except:
           # - Init containers always run to completion.
           # - Each init container must complete successfully before the next one starts.
+      serviceAccountName: ${stackname}-resource-sa
       hostname: ${stackname}-da
+      initContainers:
+      - name: ${stackname}-da-init
+        image: alpine/k8s:1.29.4
+        command: 
+        - sh
+        - -c
+        - |
+          while true; do
+            ready=$(kubectl get pods -l app=${DOLLAR}DM_SERVER_NAME -o jsonpath='{.items[*].status.containerStatuses[*].ready}' | grep -c true)
+            echo ${DOLLAR}ready pods ready
+            if  [ "${DOLLAR}ready" -gt 0 ]; then
+              echo "Starting deployment..."
+              break
+            fi
+            echo "Waiting 60 seconds for Content Server Readiness..."
+            sleep 60
+          done
+        env:
+          - name: DM_SERVER_NAME
+            value: ${stackname}-server
       containers:
       - name:  ${stackname}-da
         image:  ${dm_da_image}
