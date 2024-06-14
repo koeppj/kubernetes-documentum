@@ -16,7 +16,7 @@ data:
   DM_DOCBROKER_PORT: "${dm_docbroker_port}"
   DM_DOCBROKER_HOST: "${stackname}-docbroker-int"
   DM_GR_REGISTRY_REPO: "${dm_gr_registry_repo}"
-  DM_REST_PORT: "${dm_rest_port}"
+  DM_REST_EXTERNAL_HOST: "${stackname}-rest.k8s.koeppster.lan"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -65,7 +65,6 @@ spec:
       containers:
       - name:  ${stackname}-rest
         image:  ${dm_rest_image}
-        imagePullPolicy: Always
         resources:
           limits:
             cpu: 500m
@@ -76,7 +75,7 @@ spec:
         - configMapRef:
             name: ${stackname}-rest-configmap
         ports:
-        - containerPort:  ${dm_rest_port}
+        - containerPort:  8080
           name:  http
       restartPolicy: Always
 ---
@@ -89,7 +88,7 @@ spec:
   selector:
     app: ${stackname}-rest
   ports:
-  - port: ${dm_rest_port}
+  - port: 8080
     name: docbroker
     targetPort: http
 ---
@@ -104,7 +103,7 @@ spec:
       namespace: infrastructure
   hostnames: ["${stackname}-rest.k8s.koeppster.lan"]
   rules:
-    backendRefs:
-    - name: ${stackname}-rest
-      namespace: ${namespace}
-      port: ${dm_rest_port}
+    - backendRefs:
+      - name: ${stackname}-rest
+        namespace: ${namespace}
+        port: 8080
