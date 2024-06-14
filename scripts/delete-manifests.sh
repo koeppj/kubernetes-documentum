@@ -20,8 +20,11 @@ export dm_preferences_password_encoded=$(echo ${dm_preferences_password} | tr -d
 export dm_presets_password_encoded=$(echo ${dm_presets_password} | tr -d '[:space:]' | base64)
 
 envsubst < ${manifests_dir}/gateway.yaml | microk8s kubectl delete -f -
+envsubst < ${manifests_dir}/resource-role.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/database.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/content-server.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/administrator.yaml | microk8s kubectl delete -f -
+envsubst < ${manifests_dir}/webtop.yaml | microk8s kubectl delete -f -
+envsubst < ${manifests_dir}/rest.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/tcproute.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/extbroker-service.yaml | microk8s kubectl delete -f -
