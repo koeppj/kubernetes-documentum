@@ -45,88 +45,71 @@ data:
   DM_TS_PORT: "${dm_ts_port}"
   DM_TS_ADMIN_PORT: "${dm_ts_admin_port}"
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-server-data-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-server-dba-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Ki
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-server-config-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Ki
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-server-dfcdata-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Ki
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-server-presets-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Ki
----
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name:  ${stackname}-server-deployment
+  name:  ${stackname}-server-ss
   namespace: ${namespace}
   labels:
     app:  ${stackname}-server
 spec:
+  serviceName: ${stackname}-server
   selector:
     matchLabels:
       app: ${stackname}-server
   replicas: 1
-  strategy:
+  updateStrategy:
     rollingUpdate:
-      maxSurge: 25%
       maxUnavailable: 25%
     type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: dba
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 50Ki
+  - metadata:
+      name: config
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 50Ki
+  - metadata:
+      name: dfcdata
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 50Ki
+  - metadata:
+      name: presets
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 50Ki
   template:
     metadata:
       labels:
@@ -134,6 +117,7 @@ spec:
     spec:
       nodeSelector:
         fastnode: "yes"
+      terminationGracePeriodSeconds: 120
       containers:
       - name:  ${stackname}-server
         image:  ${dm_server_image}
@@ -153,17 +137,6 @@ spec:
           periodSeconds: 30
           failureThreshold: 3
           timeoutSeconds: 5
-#        readinessProbe: 
-#          exec:
-#            command:
-#            - 'su'
-#            - '-c'
-#            - '/home/dmadmin/bin/dm_health_check.sh'
-#            - '-'
-#            - 'dmadmin'
-#          periodSeconds: 120
-#          failureThreshold: 30
-#          timeoutSeconds: 5
         startupProbe:
           exec:
             command:
@@ -171,6 +144,15 @@ spec:
             - '/opt/documentum/dba/running'
           periodSeconds: 60
           failureThreshold: 60
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - 'su'
+              - '-c'
+              - '/home/dmadmin/home/bin/dm_shutdown.sh'
+              - '-'
+              - 'dmadmin'
         ports:
         - name: appserver
           containerPort: 9080
@@ -199,22 +181,6 @@ spec:
           mountPath: /opt/documentum/dfcdata
         - name: presets
           mountPath: /opt/documentum/presets
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: ${stackname}-server-data-pvc
-        - name: dba
-          persistentVolumeClaim:
-            claimName: ${stackname}-server-dba-pvc
-        - name: config
-          persistentVolumeClaim:
-            claimName: ${stackname}-server-config-pvc
-        - name: dfcdata
-          persistentVolumeClaim:
-            claimName: ${stackname}-server-dfcdata-pvc
-        - name: presets
-          persistentVolumeClaim:
-            claimName: ${stackname}-server-presets-pvc
       restartPolicy: Always
 ---
 apiVersion: v1

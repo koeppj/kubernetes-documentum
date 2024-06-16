@@ -8,36 +8,35 @@ data:
   POSTGRES_USER: ${database_user_encoded}
   POSTGRES_PASSWORD: ${database_user_password_encoded}
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ${stackname}-database-pvc
-  namespace: ${namespace}
-spec:
-  storageClassName: ${storage_class}
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 2Gi
----
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name:  ${stackname}-database-deployment
+  name:  ${stackname}-database-ss
   namespace: ${namespace}
   labels:
     app:  ${stackname}-database
 spec:
+  serviceName: ${stackname}-database
   selector:
     matchLabels:
       app: ${stackname}-database
   replicas: 1
-  strategy:
+  updateStrategy:
     rollingUpdate:
-      maxSurge: 25%
       maxUnavailable: 25%
     type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+  volumeClaimTemplates:
+  - metadata:
+      name: database-data
+    spec:
+      storageClassName: ${storage_class}
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 2Gi
   template:
     metadata:
       labels:
@@ -66,15 +65,11 @@ spec:
         - secretRef:
             name: ${stackname}-database-secret
         ports:
-        - containerPort:  ${database_port}
+        - containerPort: ${database_port}
           name:  database-port
         volumeMounts:
         - name: database-data
           mountPath: /var/lib/postgresql
-      volumes:
-        - name: database-data
-          persistentVolumeClaim:
-            claimName: ${stackname}-database-pvc
       restartPolicy: Always
 ---
 apiVersion: v1
