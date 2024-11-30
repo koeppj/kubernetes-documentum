@@ -24,7 +24,7 @@ data:
   DM_DOCBROKER_EXT_PORT: "${dm_docbroker_ext_port}"
   DM_DOCBROKER_EXT_NAME: "extdocbroker"
   DM_DOCBROKER_EXT_HOST: "${stackname}-docbroker-ext"
-  DM_DOCBROKER_EXT_IP: "${dm_docbroker_ext_ip}"
+  DM_DOCBROKER_EXT_IP: "${dm_docbase_ext_ip}"
   DM_DOCBROKER_EXT_CONFIG: "yes"
   DM_DOCBASE_PORT: "${dm_docbase_port}"
   DM_DOCBASE_NAME: "${dm_docbase_name}"
@@ -136,14 +136,14 @@ spec:
             - 'dmadmin'
           periodSeconds: 30
           failureThreshold: 3
-          timeoutSeconds: 5
+          timeoutSeconds: 10
         startupProbe:
           exec:
             command:
             - 'stat'
             - '/opt/documentum/dba/running'
           periodSeconds: 60
-          failureThreshold: 60
+          failureThreshold: 70
         lifecycle:
           preStop:
             exec:
@@ -165,9 +165,9 @@ spec:
         - name: docbrokerextp
           containerPort: 1690
         - name: docbase
-          containerPort: 50100
+          containerPort: ${dm_docbase_port}
         - name: docbaseplusone
-          containerPort: 50101
+          containerPort: ${dm_docbase_port_plusone}
         - name: ts-port
           containerPort: 8081
         volumeMounts:
@@ -183,6 +183,7 @@ spec:
           mountPath: /opt/documentum/presets
       restartPolicy: Always
 ---
+# JMS  
 apiVersion: v1
 kind: Service
 metadata:
@@ -195,18 +196,56 @@ spec:
   - port: 9080
     name: appserver
     targetPort: appserver
-  - port: 50100
-    protocol: TCP
-    name: docbase
-    targetPort: 50100
-  - port: 50101
-    name: docbaseone
-    protocol: TCP
-    targetPort: 50101
   - port: 8081
     name: ts-port
     targetPort: ts-port
 ---
+# Docbase (Must be NodePort)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-docbase-service
+  namespace: ${namespace}
+spec:
+  selector:
+    app: ${stackname}-server
+  type: NodePort
+  ports:
+  - port: ${dm_docbase_port}
+    nodePort: ${dm_docbase_port}
+    name: docbase
+    protocol: TCP
+    targetPort: ${dm_docbase_port}
+  - port: ${dm_docbase_port_plusone}
+    nodePort: ${dm_docbase_port_plusone}
+    name: docbaseplusone
+    protocol: TCP
+    targetPort: ${dm_docbase_port_plusone}
+---
+# Ext Docbroker (Nodeport)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${stackname}-docbroker-ext
+  namespace: ${namespace}
+spec:
+  type: NodePort
+  selector:
+    app: ${stackname}-server
+  publishNotReadyAddresses: true
+  ports:
+  - nodePort: ${dm_docbroker_ext_port}
+    port: ${dm_docbroker_ext_port}
+    name: docbroker
+    protocol: TCP
+    targetPort: ${dm_docbroker_ext_port}
+  - port: ${dm_docbroker_ext_portplus}
+    nodePort: ${dm_docbroker_ext_portplus}
+    name: docbrokerplusone
+    protocol: TCP
+    targetPort: ${dm_docbroker_ext_portplus}
+---
+# Internal Docbroker
 apiVersion: v1
 kind: Service
 metadata:
@@ -226,6 +265,7 @@ spec:
     protocol: TCP
     targetPort: 1490
 ---
+# Connect App Server to Gateway
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

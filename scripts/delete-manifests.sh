@@ -26,5 +26,3 @@ envsubst < ${manifests_dir}/content-server.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/administrator.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/webtop.yaml | microk8s kubectl delete -f -
 envsubst < ${manifests_dir}/rest.yaml | microk8s kubectl delete -f -
-envsubst < ${manifests_dir}/tcproute.yaml | microk8s kubectl delete -f -
-envsubst < ${manifests_dir}/extbroker-service.yaml | microk8s kubectl delete -f -

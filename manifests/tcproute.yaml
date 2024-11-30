@@ -1,3 +1,4 @@
+# Connect Docbasees to Gateway
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
@@ -7,19 +8,13 @@ spec:
   parentRefs:
     - name: documentum-lan-gateway
       namespace: ${namespace}
-      sectionName: docbroker
-    - name: documentum-lan-gateway
-      namespace: ${namespace}
-      sectionName: docbrokerplusone
-    - name: documentum-lan-gateway
-      namespace: ${namespace}
       sectionName: docbase
     - name: documentum-lan-gateway
-      namespace: documentum
+      namespace: ${namespace}
       sectionName: docbaseplusone
   rules:
     - backendRefs:
-      - name: ${stackname}-server
+      - name: ${stackname}-seerver
         namespace: ${namespace}
         port: ${dm_docbase_port}
       - name: ${stackname}-server

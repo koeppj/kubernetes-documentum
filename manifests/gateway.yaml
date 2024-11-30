@@ -19,30 +19,6 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
-    - name: docbroker
-      port: 1689
-      protocol: TCP
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: docbrokerplusone
-      port: 1690
-      protocol: TCP
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: docbase
-      port: 50100
-      protocol: TCP
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: docbaseplusone
-      port: 50101
-      protocol: TCP
-      allowedRoutes:
-        namespaces:
-          from: Same
   addresses:
   - type: IPAddress
     value: ${dm_docbroker_ext_ip}
